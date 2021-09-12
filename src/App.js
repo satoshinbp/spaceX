@@ -1,6 +1,7 @@
-import './App.css';
+import { useState } from 'react';
 import { ApolloClient, InMemoryCache, ApolloProvider, useQuery, gql } from '@apollo/client';
 import { format } from 'date-fns';
+import './App.css';
 
 const client = new ApolloClient({
   uri: 'https://api.spacex.land/graphql/',
@@ -52,8 +53,8 @@ const ROCKET_INFO = gql`
 
 const GET_LAUNCHESPAST = gql`
   ${ROCKET_INFO}
-  query {
-    launchesPast(limit: 12) {
+  query ($limit: Int!) {
+    launchesPast(limit: $limit) {
       id
       missionName: mission_name
       launchDate: launch_date_local
@@ -74,40 +75,39 @@ const GET_LAUNCHESPAST = gql`
   }
 `;
 
-const LaunchesPast = () => {
-  const { loading, error, data } = useQuery(GET_LAUNCHESPAST);
+const LaunchesPast = ({ limit }) => {
+  const { loading, error, data } = useQuery(GET_LAUNCHESPAST, {
+    variables: { limit },
+  });
 
   if (loading) return 'Loading...';
   if (error) return `Error! ${error.message}`;
 
   return (
-    <>
-      <h2>Past Missions</h2>
-      <div className="container">
-        {data.launchesPast.map((launch) => (
-          <div className="card mission-card" key={launch.id}>
-            <div className="wrapper">
-              <h3>{launch.missionName}</h3>
-              <div className="img-container">
-                {launch.links.images.length > 0 ? (
-                  <img src={launch.links.images[Math.floor(Math.random() * launch.links.images.length)]} alt="" />
-                ) : (
-                  <img src={null} alt="Not Found" />
-                )}
-              </div>
-              <p>Date: {format(new Date(launch.launchDate), 'yyyy/MM/dd')}</p>
-              <p>Site: {launch.launchSite.siteName}</p>
-              <p>Rocket: {launch.rocket.rocket.name}</p>
-              <p>
-                Links:&nbsp;
-                {launch.links.article && <a href={launch.links.article}>Article</a>},&nbsp;
-                {launch.links.video && <a href={launch.links.video}>Video</a>}
-              </p>
+    <div className="container">
+      {data.launchesPast.map((launch) => (
+        <div className="card mission-card" key={launch.id}>
+          <div className="wrapper">
+            <h3>{launch.missionName}</h3>
+            <div className="img-container">
+              {launch.links.images.length > 0 ? (
+                <img src={launch.links.images[Math.floor(Math.random() * launch.links.images.length)]} alt="" />
+              ) : (
+                <img src={null} alt="Not Found" />
+              )}
             </div>
+            <p>Date: {format(new Date(launch.launchDate), 'yyyy/MM/dd')}</p>
+            <p>Site: {launch.launchSite.siteName}</p>
+            <p>Rocket: {launch.rocket.rocket.name}</p>
+            <p>
+              Links:&nbsp;
+              {launch.links.article && <a href={launch.links.article}>Article</a>},&nbsp;
+              {launch.links.video && <a href={launch.links.video}>Video</a>}
+            </p>
           </div>
-        ))}
-      </div>
-    </>
+        </div>
+      ))}
+    </div>
   );
 };
 
@@ -161,41 +161,45 @@ const Rockets = () => {
   if (error) return `Error! ${error.message}`;
 
   return (
-    <>
-      <h2>Rockets</h2>
-      <div className="container">
-        {data.rockets.map((rocket) => (
-          <div className="card rocket-card">
-            <div className="wrapper">
-              <h3>{rocket.name}</h3>
-              <p>{rocket.description}</p>
-              <h4>First Stage</h4>
-              <p>Burn Time: {rocket.firstStage.burnTime}s</p>
-              <p>Fuel Amount: {rocket.firstStage.fuelAmount}kg</p>
-              <p>Thrust (Sea Level): {rocket.firstStage.thrustSeaLevel.kN}kN</p>
-              <p>Thrust (Vacuum): {rocket.firstStage.thrustVacuum.kN}kN</p>
-              <h4>Second Stage</h4>
-              <p>Burn Time: {rocket.secondStage.burnTime}s</p>
-              <p>Fuel Amount: {rocket.secondStage.fuelAmount}kg</p>
-              <p>Thrust: {rocket.secondStage.thrust.kN}kN</p>
-              <p>
-                Payload Fairing: (D){rocket.secondStage.payloads.fairing.diameter.meters}m x&nbsp; (H)
-                {rocket.secondStage.payloads.fairing.height.meters}m
-              </p>
-            </div>
+    <div className="container">
+      {data.rockets.map((rocket) => (
+        <div className="card rocket-card">
+          <div className="wrapper">
+            <h3>{rocket.name}</h3>
+            <p>{rocket.description}</p>
+            <h4>First Stage</h4>
+            <p>Burn Time: {rocket.firstStage.burnTime}s</p>
+            <p>Fuel Amount: {rocket.firstStage.fuelAmount}kg</p>
+            <p>Thrust (Sea Level): {rocket.firstStage.thrustSeaLevel.kN}kN</p>
+            <p>Thrust (Vacuum): {rocket.firstStage.thrustVacuum.kN}kN</p>
+            <h4>Second Stage</h4>
+            <p>Burn Time: {rocket.secondStage.burnTime}s</p>
+            <p>Fuel Amount: {rocket.secondStage.fuelAmount}kg</p>
+            <p>Thrust: {rocket.secondStage.thrust.kN}kN</p>
+            <p>
+              Payload Fairing: (D){rocket.secondStage.payloads.fairing.diameter.meters}m x&nbsp; (H)
+              {rocket.secondStage.payloads.fairing.height.meters}m
+            </p>
           </div>
-        ))}
-      </div>
-    </>
+        </div>
+      ))}
+    </div>
   );
 };
 
 const App = () => {
+  const [missionsToDisplay, setMissionsToDisplay] = useState(12);
+
+  const handleChange = (e) => setMissionsToDisplay(parseInt(e.target.value));
+
   return (
     <div className="wrapper">
       <ApolloProvider client={client}>
         <Company />
-        <LaunchesPast />
+        <h2>Past Missions</h2>
+        Display <input type="number" value={missionsToDisplay} onChange={handleChange} />
+        <LaunchesPast limit={missionsToDisplay} />
+        <h2>Rockets</h2>
         <Rockets />
       </ApolloProvider>
     </div>
